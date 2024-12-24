@@ -61,6 +61,12 @@ const Contact = () => {
 
     try {
       console.log('Sending request to:', `${config.apiUrl}/api/contact`);
+      console.log('Request data:', {
+        name: formData.name,
+        email: formData.email,
+        message: formData.message,
+        status: 'unread'
+      });
       
       const response = await axios({
         method: 'post',
@@ -72,9 +78,13 @@ const Contact = () => {
           status: 'unread'
         },
         headers: {
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        timeout: 10000 // 10 second timeout
       });
+
+      console.log('Response:', response.data);
 
       if (response.data && response.data.success) {
         setLoading(false);
@@ -98,21 +108,32 @@ const Contact = () => {
         // Reset form
         setFormData({ name: '', email: '', message: '' });
       } else {
-        throw new Error('Failed to send message');
+        throw new Error(response.data.message || 'Failed to send message');
       }
     } catch (err) {
       setLoading(false);
       setShowError(true);
       
       if (err.response) {
-        setErrorMessage(err.response.data.message || 'Failed to send message');
-        console.error('Server error:', err.response.data);
+        // Server responded with error
+        const errorMessage = err.response.data.message || 'Server error occurred';
+        setErrorMessage(errorMessage);
+        console.error('Server error:', {
+          status: err.response.status,
+          data: err.response.data,
+          headers: err.response.headers
+        });
       } else if (err.request) {
-        setErrorMessage('Could not reach the server. Please try again.');
-        console.error('Network error:', err.request);
+        // Request made but no response
+        setErrorMessage('Could not reach the server. Please check your connection and try again.');
+        console.error('Network error:', {
+          request: err.request,
+          message: err.message
+        });
       } else {
-        setErrorMessage('Failed to send message. Please try again.');
-        console.error('Error:', err.message);
+        // Error in request setup
+        setErrorMessage(err.message || 'Failed to send message. Please try again.');
+        console.error('Request setup error:', err);
       }
     } finally {
       setLoading(false);
