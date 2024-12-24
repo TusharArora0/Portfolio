@@ -68,15 +68,14 @@ const Contact = () => {
         message: formData.message,
         status: 'unread'
       }, {
-        timeout: 30000, // Increased timeout to 30 seconds
+        timeout: 30000,
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
-        },
-        withCredentials: true
+        }
       });
 
-      if (response.data) {
+      if (response.data && response.data.success) {
         setLoading(false);
         setShowSuccess(true);
         
@@ -97,6 +96,8 @@ const Contact = () => {
 
         // Reset form
         setFormData({ name: '', email: '', message: '' });
+      } else {
+        throw new Error('Failed to send message');
       }
     } catch (err) {
       setLoading(false);
@@ -105,22 +106,16 @@ const Contact = () => {
       // Enhanced error handling
       if (err.response) {
         // Server responded with an error
-        setErrorMessage(`Server Error: ${err.response.data.message || 'An error occurred'}`);
-        console.error('Server error:', {
-          status: err.response.status,
-          data: err.response.data
-        });
+        setErrorMessage(err.response.data.message || 'Failed to send message');
+        console.error('Server error:', err.response.data);
       } else if (err.request) {
         // Request was made but no response
-        setErrorMessage('Could not reach the server. Please check your connection and try again.');
-        console.error('Network error:', {
-          message: err.message,
-          request: err.request
-        });
+        setErrorMessage('Could not reach the server. Please try again.');
+        console.error('Network error:', err.request);
       } else {
         // Error in request setup
         setErrorMessage('Failed to send message. Please try again.');
-        console.error('Error details:', err.message);
+        console.error('Error:', err.message);
       }
     } finally {
       setLoading(false);
