@@ -6,33 +6,41 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// CORS configuration
-app.use(cors({
-    origin: [
-        'http://localhost:3000',
-        'https://frontend-beryl-iota-21.vercel.app',
-        'https://portfolio-backend-ten-kohl.vercel.app',
-        'https://portfolio-backend-nzfmihyf0-tushararora0s-projects.vercel.app'
-    ],
+// Debug middleware - add before other middleware
+app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    console.log('Origin:', req.headers.origin);
+    console.log('Headers:', req.headers);
+    next();
+});
+
+// Enable CORS for all routes
+app.use(cors());
+
+// More specific CORS for pre-flight requests
+app.options('*', cors({
+    origin: true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: [
-        'Origin',
-        'X-Requested-With',
-        'Content-Type',
-        'Accept',
-        'Authorization',
-        'Access-Control-Allow-Credentials'
-    ],
-    exposedHeaders: ['Set-Cookie'],
-    optionsSuccessStatus: 200
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With']
 }));
-
-// Enable pre-flight requests for all routes
-app.options('*', cors());
 
 // Middleware
 app.use(express.json());
+
+// Add headers middleware
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', 'https://frontend-beryl-iota-21.vercel.app');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    
+    // Handle preflight
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+    next();
+});
 
 // MongoDB Connection Options
 const mongooseOptions = {
