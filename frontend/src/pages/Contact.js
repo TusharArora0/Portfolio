@@ -68,10 +68,12 @@ const Contact = () => {
         message: formData.message,
         status: 'unread'
       }, {
-        timeout: 10000, // 10 second timeout
+        timeout: 30000, // Increased timeout to 30 seconds
         headers: {
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        withCredentials: true
       });
 
       if (response.data) {
@@ -102,18 +104,26 @@ const Contact = () => {
       
       // Enhanced error handling
       if (err.response) {
-        // Server responded with error
-        setErrorMessage(`Error: ${err.response.data.message || 'Server error occurred'}`);
-        console.error('Server error:', err.response.data);
+        // Server responded with an error
+        setErrorMessage(`Server Error: ${err.response.data.message || 'An error occurred'}`);
+        console.error('Server error:', {
+          status: err.response.status,
+          data: err.response.data
+        });
       } else if (err.request) {
-        // Request made but no response
-        setErrorMessage('Could not reach the server. Please check your connection.');
-        console.error('Network error:', err.request);
+        // Request was made but no response
+        setErrorMessage('Could not reach the server. Please check your connection and try again.');
+        console.error('Network error:', {
+          message: err.message,
+          request: err.request
+        });
       } else {
         // Error in request setup
         setErrorMessage('Failed to send message. Please try again.');
         console.error('Error details:', err.message);
       }
+    } finally {
+      setLoading(false);
     }
   };
 
