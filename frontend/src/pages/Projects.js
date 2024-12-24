@@ -14,7 +14,7 @@ const Projects = () => {
         const res = await axios.get(`${config.apiUrl}/api/projects`);
         setProjects(res.data);
       } catch (err) {
-        console.error(err);
+        console.error('Failed to fetch projects:', err);
       }
     };
     fetchProjects();
