@@ -33,12 +33,11 @@ const Admin = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [refreshKey, setRefreshKey] = useState(0); // For manual refresh
+  const [refreshKey, setRefreshKey] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchMessages();
-    // Set up polling every 30 seconds
     const interval = setInterval(fetchMessages, 30000);
     return () => clearInterval(interval);
   }, [refreshKey]);
@@ -46,7 +45,13 @@ const Admin = () => {
   const fetchMessages = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${config.apiUrl}/api/contact`);
+      const response = await axios.get(`${config.apiUrl}/api/contact`, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        withCredentials: true
+      });
       setMessages(response.data);
       setError('');
     } catch (err) {
@@ -59,7 +64,9 @@ const Admin = () => {
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`${config.apiUrl}/api/contact/${id}`);
+      await axios.delete(`${config.apiUrl}/api/contact/${id}`, {
+        withCredentials: true
+      });
       setMessages(messages.filter(msg => msg._id !== id));
     } catch (err) {
       console.error('Failed to delete message:', err);
@@ -71,6 +78,11 @@ const Admin = () => {
     try {
       const response = await axios.put(`${config.apiUrl}/api/contact/${id}`, {
         status: 'read'
+      }, {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        withCredentials: true
       });
       setMessages(messages.map(msg => 
         msg._id === id ? response.data : msg
