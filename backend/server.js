@@ -11,20 +11,11 @@ app.use(cors({
     origin: [
         'http://localhost:3000',
         'https://frontend-beryl-iota-21.vercel.app',
-        'https://frontend.vercel.app'
+        'https://portfolio-backend-ten-kohl.vercel.app'
     ],
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: [
-        'Origin',
-        'X-Requested-With',
-        'Content-Type',
-        'Accept',
-        'Authorization',
-        'Access-Control-Allow-Credentials'
-    ],
-    exposedHeaders: ['Set-Cookie'],
-    optionsSuccessStatus: 200
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 }));
 
 // Middleware
