@@ -47,12 +47,10 @@ const Admin = () => {
       setLoading(true);
       const response = await axios.get(`${config.apiUrl}/api/contact`, {
         headers: {
-          'Accept': 'application/json',
           'Content-Type': 'application/json'
-        },
-        withCredentials: true
+        }
       });
-      setMessages(response.data);
+      setMessages(response.data.data || response.data);
       setError('');
     } catch (err) {
       console.error('Failed to fetch messages:', err);
@@ -65,7 +63,9 @@ const Admin = () => {
   const handleDelete = async (id) => {
     try {
       await axios.delete(`${config.apiUrl}/api/contact/${id}`, {
-        withCredentials: true
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
       setMessages(messages.filter(msg => msg._id !== id));
     } catch (err) {
@@ -81,11 +81,10 @@ const Admin = () => {
       }, {
         headers: {
           'Content-Type': 'application/json'
-        },
-        withCredentials: true
+        }
       });
       setMessages(messages.map(msg => 
-        msg._id === id ? response.data : msg
+        msg._id === id ? (response.data.data || response.data) : msg
       ));
     } catch (err) {
       console.error('Failed to update message status:', err);
