@@ -8,9 +8,14 @@ const PORT = process.env.PORT || 5000;
 
 // CORS configuration
 app.use(cors({
-    origin: 'http://localhost:3000',
+    origin: [
+        'http://localhost:3000',
+        'https://frontend-beryl-iota-21.vercel.app',
+        'https://frontend-beryl-iota-21.vercel.app'
+    ],
+    credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type']
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Middleware
