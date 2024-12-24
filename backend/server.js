@@ -7,35 +7,12 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // CORS Configuration
-const allowedOrigins = [
-    'http://localhost:3000',
-    'https://frontend-beryl-iota-21.vercel.app',
-    'https://portfolio-backend-ten-kohl.vercel.app'
-];
-
-const corsOptions = {
-    origin: function (origin, callback) {
-        // Allow requests with no origin (like mobile apps or curl requests)
-        if (!origin) return callback(null, true);
-        
-        if (allowedOrigins.indexOf(origin) !== -1) {
-            callback(null, true);
-        } else {
-            console.log('Blocked by CORS:', origin);
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
+app.use(cors({
+    origin: 'https://frontend-beryl-iota-21.vercel.app',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
-    optionsSuccessStatus: 200
-};
-
-// Apply CORS configuration
-app.use(cors(corsOptions));
-
-// Handle preflight requests
-app.options('*', cors(corsOptions));
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
+}));
 
 // Middleware
 app.use(express.json());
@@ -45,13 +22,6 @@ app.use((req, res, next) => {
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
     console.log('Origin:', req.headers.origin);
     console.log('Headers:', req.headers);
-    
-    // Add CORS headers on every response
-    res.header('Access-Control-Allow-Credentials', 'true');
-    if (allowedOrigins.includes(req.headers.origin)) {
-        res.header('Access-Control-Allow-Origin', req.headers.origin);
-    }
-    
     next();
 });
 
