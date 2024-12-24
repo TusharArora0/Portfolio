@@ -6,98 +6,141 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Global variable to track MongoDB connection status
-let isMongoConnected = false;
-
-// Middleware for logging requests
-app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-    next();
-});
-
 // CORS configuration
 app.use(cors({
     origin: [
         'http://localhost:3000',
         'https://frontend-beryl-iota-21.vercel.app',
-        'https://frontend-beryl-iota-21.vercel.app/',
-        'http://localhost:5000'
+        'https://portfolio-backend-ten-kohl.vercel.app'
     ],
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization'],
     optionsSuccessStatus: 200
 }));
 
 // Middleware
 app.use(express.json());
 
-// Connect to MongoDB
-const connectDB = async () => {
+// MongoDB Connection Options
+const mongooseOptions = {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    serverSelectionTimeoutMS: 30000,
+    socketTimeoutMS: 45000,
+    connectTimeoutMS: 30000,
+    family: 4,
+    autoIndex: true,
+    keepAlive: true,
+    keepAliveInitialDelay: 300000
+};
+
+// Connect to MongoDB with async function
+const connectDB = async (force = false) => {
     try {
         if (!process.env.MONGODB_URI) {
-            console.error('MONGODB_URI is not defined in environment variables');
-            return false;
+            throw new Error('MongoDB URI is not defined');
+        }
+
+        // If already connected and not forcing reconnect, return true
+        if (mongoose.connection.readyState === 1 && !force) {
+            return true;
+        }
+
+        // If in any other state than disconnected, force close
+        if (mongoose.connection.readyState !== 0) {
+            await mongoose.disconnect();
+            // Wait a bit for the connection to fully close
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        // Create new connection
+        const conn = await mongoose.connect(process.env.MONGODB_URI, mongooseOptions);
+        
+        // Verify connection
+        if (conn.connection.readyState === 1) {
+            console.log('MongoDB Connected Successfully');
+            console.log('Connected to database:', conn.connection.name);
+            return true;
         }
         
-        console.log('Attempting to connect to MongoDB...');
-        
-        await mongoose.connect(process.env.MONGODB_URI, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-            serverSelectionTimeoutMS: 10000,
-            socketTimeoutMS: 45000,
-            family: 4
-        });
-        
-        console.log('MongoDB connected successfully');
-        isMongoConnected = true;
-        return true;
+        return false;
     } catch (err) {
-        console.error('MongoDB connection error:', err.message);
-        if (err.name === 'MongoServerSelectionError') {
-            console.error('Could not connect to MongoDB server. Please check:');
-            console.error('1. Your network connection');
-            console.error('2. MongoDB Atlas whitelist settings');
-            console.error('3. Database user credentials');
-        }
-        isMongoConnected = false;
+        console.error('MongoDB connection error:', {
+            name: err.name,
+            message: err.message,
+            code: err.code
+        });
         return false;
     }
 };
 
-// Attempt initial connection
-connectDB();
+// Test MongoDB Connection
+const testConnection = async () => {
+    try {
+        // First check connection state
+        if (mongoose.connection.readyState !== 1) {
+            return false;
+        }
 
-// Middleware to check MongoDB connection
-const checkMongoConnection = (req, res, next) => {
-    if (!isMongoConnected && req.path !== '/api/test' && !req.path.startsWith('/favicon')) {
-        return res.status(503).json({
-            message: 'Database connection is not available',
-            status: 'error'
-        });
+        // Try to ping the database
+        await mongoose.connection.db.admin().ping();
+        return true;
+    } catch (err) {
+        console.error('MongoDB ping failed:', err.message);
+        // If ping fails, try to reconnect
+        return await connectDB(true);
     }
-    next();
 };
 
-app.use(checkMongoConnection);
+// Retry connection with exponential backoff
+const retryConnection = async (maxRetries = 3) => {
+    for (let i = 0; i < maxRetries; i++) {
+        const delay = Math.min(1000 * Math.pow(2, i), 10000); // Exponential backoff with max 10s
+        console.log(`Connection attempt ${i + 1}/${maxRetries}`);
+        
+        const connected = await connectDB();
+        if (connected) return true;
+        
+        if (i < maxRetries - 1) {
+            console.log(`Waiting ${delay/1000} seconds before next attempt...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }
+    return false;
+};
+
+// Initial connection attempt with retry
+retryConnection().then(success => {
+    if (!success) {
+        console.error('Failed to connect to MongoDB after multiple attempts');
+    }
+});
+
+// MongoDB connection events
+mongoose.connection.on('connected', () => {
+    console.log('Mongoose connected to MongoDB');
+});
+
+mongoose.connection.on('error', (err) => {
+    console.error('Mongoose connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+    console.log('Mongoose disconnected');
+});
 
 // Basic route to test the server
 app.get('/', (req, res) => {
     res.json({ 
         message: 'Backend server is running',
-        timestamp: new Date().toISOString(),
-        env: {
-            nodeEnv: process.env.NODE_ENV,
-            mongoDbConnected: isMongoConnected
-        }
+        timestamp: new Date().toISOString()
     });
 });
 
 // Test route for MongoDB connection
 app.get('/api/test', async (req, res) => {
     try {
-        const dbState = mongoose.connection.readyState;
         const states = {
             0: 'disconnected',
             1: 'connected',
@@ -105,24 +148,61 @@ app.get('/api/test', async (req, res) => {
             3: 'disconnecting'
         };
 
-        // Try to reconnect if disconnected
-        if (dbState === 0) {
-            await connectDB();
+        // Try to connect or reconnect
+        const connected = await connectDB();
+        
+        // Test the connection
+        const pingSuccess = await testConnection();
+        let collections = [];
+        let connectionTest = 'Not tested';
+
+        if (connected && pingSuccess) {
+            try {
+                collections = await mongoose.connection.db.listCollections().toArray();
+                connectionTest = `Connected, found ${collections.length} collections`;
+            } catch (e) {
+                connectionTest = `Error listing collections: ${e.message}`;
+                // Try to reconnect on collection error
+                await connectDB(true);
+            }
+        } else {
+            connectionTest = 'Failed to establish connection';
+            // Force reconnect on next attempt
+            await mongoose.disconnect();
         }
+
+        // Get final state
+        const finalState = mongoose.connection.readyState;
+
+        // Get connection details
+        const connectionDetails = {
+            state: states[finalState],
+            database: mongoose.connection.name || 'not connected',
+            host: mongoose.connection.host || 'not connected',
+            port: mongoose.connection.port || 'not connected',
+            readyState: finalState,
+            connected: finalState === 1,
+            ping: pingSuccess ? 'Success' : 'Failed'
+        };
 
         res.json({
             message: 'Test route',
-            mongoDbStatus: states[mongoose.connection.readyState],
-            isConnected: isMongoConnected,
-            env: process.env.NODE_ENV,
-            timestamp: new Date().toISOString(),
-            mongoDbUri: process.env.MONGODB_URI ? 'URI is set' : 'URI is missing'
+            mongoDbStatus: states[finalState],
+            connectionTest,
+            connectionDetails,
+            collections: collections.map(c => c.name),
+            timestamp: new Date().toISOString()
         });
     } catch (error) {
+        console.error('Test route error:', error);
+        // Try to clean up connection on error
+        await mongoose.disconnect();
+        
         res.status(500).json({
             message: 'Error in test route',
             error: error.message,
-            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            errorName: error.name,
+            connectionState: mongoose.connection.readyState
         });
     }
 });
@@ -133,7 +213,7 @@ const userRoutes = require('./routes/users');
 const projectRoutes = require('./routes/projects');
 const contactRoutes = require('./routes/contact');
 
-// Use Routes with full paths
+// Use Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/projects', projectRoutes);
@@ -149,36 +229,21 @@ app.use((err, req, res, next) => {
     });
 });
 
-// Handle 404 - Keep this last
+// Handle 404
 app.use((req, res) => {
-    if (req.path === '/favicon.ico') {
-        return res.status(204).end();
-    }
-    
-    console.log('404 Not Found:', req.method, req.path);
-    res.status(404).json({ 
-        message: 'Route not found',
-        path: req.path,
-        method: req.method
-    });
+    res.status(404).json({ message: 'Route not found' });
 });
 
 // Start server
 const server = app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
-    console.log('CORS enabled for:', [
-        'http://localhost:3000',
-        'https://frontend-beryl-iota-21.vercel.app'
-    ]);
 });
 
-// Handle server shutdown
+// Handle graceful shutdown
 process.on('SIGTERM', () => {
-    console.log('SIGTERM received. Shutting down gracefully...');
     server.close(() => {
-        console.log('Server closed');
         mongoose.connection.close(false, () => {
-            console.log('MongoDB connection closed');
+            console.log('MongoDB connection closed.');
             process.exit(0);
         });
     });
