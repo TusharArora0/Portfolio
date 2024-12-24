@@ -62,16 +62,17 @@ const Contact = () => {
     try {
       console.log('Sending request to:', `${config.apiUrl}/api/contact`);
       
-      const response = await axios.post(`${config.apiUrl}/api/contact`, {
-        name: formData.name,
-        email: formData.email,
-        message: formData.message,
-        status: 'unread'
-      }, {
-        timeout: 30000,
+      const response = await axios({
+        method: 'post',
+        url: `${config.apiUrl}/api/contact`,
+        data: {
+          name: formData.name,
+          email: formData.email,
+          message: formData.message,
+          status: 'unread'
+        },
         headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Content-Type': 'application/json'
         }
       });
 
@@ -103,17 +104,13 @@ const Contact = () => {
       setLoading(false);
       setShowError(true);
       
-      // Enhanced error handling
       if (err.response) {
-        // Server responded with an error
         setErrorMessage(err.response.data.message || 'Failed to send message');
         console.error('Server error:', err.response.data);
       } else if (err.request) {
-        // Request was made but no response
         setErrorMessage('Could not reach the server. Please try again.');
         console.error('Network error:', err.request);
       } else {
-        // Error in request setup
         setErrorMessage('Failed to send message. Please try again.');
         console.error('Error:', err.message);
       }
