@@ -16,6 +16,7 @@ import { motion } from 'framer-motion';
 import axios from 'axios';
 import GlassContainer from '../components/GlassContainer';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import config from '../config';
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -28,6 +29,7 @@ const Contact = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [progress, setProgress] = useState(0);
   const [showError, setShowError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const validateForm = () => {
     const newErrors = {};
@@ -54,13 +56,22 @@ const Contact = () => {
     }
 
     setLoading(true);
+    setShowError(false);
+    setErrorMessage('');
 
     try {
-      const response = await axios.post('https://portfolio-backend-nzfmihyf0-tushararora0s-projects.vercel.app/api/contact', {
+      console.log('Sending request to:', `${config.apiUrl}/api/contact`);
+      
+      const response = await axios.post(`${config.apiUrl}/api/contact`, {
         name: formData.name,
         email: formData.email,
         message: formData.message,
         status: 'unread'
+      }, {
+        timeout: 10000, // 10 second timeout
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
 
       if (response.data) {
@@ -88,7 +99,21 @@ const Contact = () => {
     } catch (err) {
       setLoading(false);
       setShowError(true);
-      console.error('Error details:', err.response?.data || err.message);
+      
+      // Enhanced error handling
+      if (err.response) {
+        // Server responded with error
+        setErrorMessage(`Error: ${err.response.data.message || 'Server error occurred'}`);
+        console.error('Server error:', err.response.data);
+      } else if (err.request) {
+        // Request made but no response
+        setErrorMessage('Could not reach the server. Please check your connection.');
+        console.error('Network error:', err.request);
+      } else {
+        // Error in request setup
+        setErrorMessage('Failed to send message. Please try again.');
+        console.error('Error details:', err.message);
+      }
     }
   };
 
@@ -285,7 +310,7 @@ const Contact = () => {
           severity="error" 
           sx={{ width: '100%' }}
         >
-          Failed to send message. Please try again.
+          {errorMessage || 'Failed to send message. Please try again later.'}
         </Alert>
       </Snackbar>
     </Container>
