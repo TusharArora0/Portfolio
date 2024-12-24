@@ -6,39 +6,52 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Debug middleware - add before other middleware
-app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-    console.log('Origin:', req.headers.origin);
-    console.log('Headers:', req.headers);
-    next();
-});
+// CORS Configuration
+const allowedOrigins = [
+    'http://localhost:3000',
+    'https://frontend-beryl-iota-21.vercel.app',
+    'https://portfolio-backend-ten-kohl.vercel.app'
+];
 
-// Enable CORS for all routes
-app.use(cors());
-
-// More specific CORS for pre-flight requests
-app.options('*', cors({
-    origin: true,
+const corsOptions = {
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            console.log('Blocked by CORS:', origin);
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With']
-}));
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
+    optionsSuccessStatus: 200
+};
+
+// Apply CORS configuration
+app.use(cors(corsOptions));
+
+// Handle preflight requests
+app.options('*', cors(corsOptions));
 
 // Middleware
 app.use(express.json());
 
-// Add headers middleware
+// Debug middleware
 app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', 'https://frontend-beryl-iota-21.vercel.app');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    console.log('Origin:', req.headers.origin);
+    console.log('Headers:', req.headers);
     
-    // Handle preflight
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end();
+    // Add CORS headers on every response
+    res.header('Access-Control-Allow-Credentials', 'true');
+    if (allowedOrigins.includes(req.headers.origin)) {
+        res.header('Access-Control-Allow-Origin', req.headers.origin);
     }
+    
     next();
 });
 
