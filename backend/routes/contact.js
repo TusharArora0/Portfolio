@@ -4,17 +4,30 @@ const Contact = require('../models/Contact');
 // Submit contact form
 router.post('/', async (req, res) => {
     try {
+        console.log('Received contact form submission:', req.body);
+
         // Validate required fields
         const { name, email, message } = req.body;
         if (!name || !email || !message) {
+            console.log('Validation failed:', { name, email, message });
             return res.status(400).json({ 
                 success: false,
-                message: 'Please provide name, email, and message' 
+                message: 'Please provide name, email, and message',
+                received: { name, email, message }
             });
         }
 
-        const newContact = new Contact(req.body);
+        // Create new contact
+        const newContact = new Contact({
+            name,
+            email,
+            message,
+            status: 'unread'
+        });
+
+        // Save to database
         const savedContact = await newContact.save();
+        console.log('Contact saved successfully:', savedContact);
         
         res.status(200).json({
             success: true,
@@ -22,7 +35,30 @@ router.post('/', async (req, res) => {
             data: savedContact
         });
     } catch (err) {
-        console.error('Contact submission error:', err);
+        console.error('Contact submission error:', {
+            name: err.name,
+            message: err.message,
+            code: err.code,
+            stack: err.stack
+        });
+
+        // Check for specific MongoDB errors
+        if (err.name === 'ValidationError') {
+            return res.status(400).json({
+                success: false,
+                message: 'Validation error',
+                errors: Object.values(err.errors).map(e => e.message)
+            });
+        }
+
+        if (err.name === 'MongoError' || err.name === 'MongoServerError') {
+            return res.status(500).json({
+                success: false,
+                message: 'Database error',
+                error: err.message
+            });
+        }
+
         res.status(500).json({
             success: false,
             message: 'Failed to send message',
