@@ -11,12 +11,25 @@ app.use(cors({
     origin: [
         'http://localhost:3000',
         'https://frontend-beryl-iota-21.vercel.app',
-        'https://portfolio-backend-ten-kohl.vercel.app'
+        'https://portfolio-backend-ten-kohl.vercel.app',
+        'https://portfolio-backend-nzfmihyf0-tushararora0s-projects.vercel.app'
     ],
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: [
+        'Origin',
+        'X-Requested-With',
+        'Content-Type',
+        'Accept',
+        'Authorization',
+        'Access-Control-Allow-Credentials'
+    ],
+    exposedHeaders: ['Set-Cookie'],
+    optionsSuccessStatus: 200
 }));
+
+// Enable pre-flight requests for all routes
+app.options('*', cors());
 
 // Middleware
 app.use(express.json());
