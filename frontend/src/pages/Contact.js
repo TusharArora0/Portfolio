@@ -56,7 +56,7 @@ const Contact = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post('http://localhost:5000/api/contact', {
+      const response = await axios.post('https://portfolio-backend-nzfmihyf0-tushararora0s-projects.vercel.app/api/contact', {
         name: formData.name,
         email: formData.email,
         message: formData.message,

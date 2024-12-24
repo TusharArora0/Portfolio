@@ -3,6 +3,7 @@ import { Container, Grid, Typography } from '@mui/material';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import ProjectCard from '../components/ProjectCard';
+import config from '../config';
 
 const Projects = () => {
   const [projects, setProjects] = useState([]);
@@ -10,7 +11,7 @@ const Projects = () => {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/api/projects');
+        const res = await axios.get(`${config.apiUrl}/api/projects`);
         setProjects(res.data);
       } catch (err) {
         console.error(err);

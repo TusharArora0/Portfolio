@@ -25,6 +25,7 @@ import { Delete, Visibility, Check, Refresh } from '@mui/icons-material';
 import axios from 'axios';
 import GlassContainer from '../components/GlassContainer';
 import { useNavigate } from 'react-router-dom';
+import config from '../config';
 
 const Admin = () => {
   const [messages, setMessages] = useState([]);
@@ -45,7 +46,7 @@ const Admin = () => {
   const fetchMessages = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:5000/api/contact');
+      const response = await axios.get(`${config.apiUrl}/api/contact`);
       setMessages(response.data);
       setError('');
     } catch (err) {
@@ -58,7 +59,7 @@ const Admin = () => {
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`http://localhost:5000/api/contact/${id}`);
+      await axios.delete(`${config.apiUrl}/api/contact/${id}`);
       setMessages(messages.filter(msg => msg._id !== id));
     } catch (err) {
       console.error('Failed to delete message:', err);
@@ -68,7 +69,7 @@ const Admin = () => {
 
   const handleMarkAsRead = async (id) => {
     try {
-      const response = await axios.put(`http://localhost:5000/api/contact/${id}`, {
+      const response = await axios.put(`${config.apiUrl}/api/contact/${id}`, {
         status: 'read'
       });
       setMessages(messages.map(msg => 
